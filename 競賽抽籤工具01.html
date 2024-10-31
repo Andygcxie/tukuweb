@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> &nbsp;  &nbsp;  &nbsp;  &nbsp; ❤競賽抽籤分組表❤</title>
+    
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            background-color: #f0f0f0;
+            color: #333;
+            font-family: Arial, sans-serif;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .group {
+            border: 6px solid #ddd;
+            background-color: #fff;
+            padding: 50px;
+            margin: 10% 0;
+            width: 100%;
+            max-width: 1080px;
+        }
+
+        .container {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        textarea {
+            width: 230px;
+            height: 300px;
+            font-size: 1.6em;
+            background-color: #fafafa;
+            color: #333;
+        }
+
+        .result {
+            width: 230px;
+            height: 300px;
+            font-size: 1.6em;
+            border: 1px solid #ccc;
+            padding: 10px;
+            overflow-y: auto;
+            background-color: #f9f9f9;
+            color: #000;
+        }
+
+        button {
+            margin: 10px;
+            padding: 10px;
+            font-size: 1.2em;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        input {
+            width: 100%;
+            margin-bottom: 10px;
+            font-size: 2.0em;
+            background-color: #fafafa;
+            color: #333;
+        }
+
+        .color-controls {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            gap: 20px;
+        }
+
+        .color-controls label {
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+    <h1>💛🧡❤️土庫國小競賽抽籤分組表❤️🧡💛</h1>
+
+    <input type="file" id="csvUpload" accept=".csv" />
+    <button onclick="handleCSVUpload()">🤍匯入 CSV🤍</button>
+
+    <button onclick="shuffleAllGroups()">🎲 全部抽籤 🎲</button>
+
+    <div id="groups"></div>
+
+    <button onclick="downloadAllResults()">💥下載所有結果💥</button>
+
+    <div class="color-controls">
+        <div>
+            <label for="bgColorPicker">選擇背景顏色:</label>
+            <input type="color" id="bgColorPicker" value="#f0f0f0" />
+        </div>
+        <div>
+            <label for="textColorPicker">選擇文字顏色:</label>
+            <input type="color" id="textColorPicker" value="#333333" />
+        </div>
+    </div>
+
+    <script>
+        // 新增背景顏色變更功能
+        document.getElementById('bgColorPicker').addEventListener('input', function (event) {
+            document.body.style.backgroundColor = event.target.value;
+        });
+
+        // 新增文字顏色變更功能
+        document.getElementById('textColorPicker').addEventListener('input', function (event) {
+            document.body.style.color = event.target.value;
+        });
+
+        function createGroup(groupNumber) {
+            return `
+                <div class="group">
+                    <h2>🎨第 ${groupNumber} 組🎨</h2>
+                    <input type="text" id="item-${groupNumber}" placeholder="輸入抽籤項目" />
+                    <div class="container">
+                        <div>
+                            <textarea id="studentNames-${groupNumber}" placeholder="一行一個姓名" oninput="updateStudentCount(${groupNumber})"></textarea>
+                            <div id="studentCount-${groupNumber}">共輸入學生數: 0</div>
+                            <button onclick="shuffleNames(${groupNumber})">⚾隨機排序⚾</button>
+                        </div>
+                        <div>
+                            <div class="result" id="result-${groupNumber}"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        const groupsContainer = document.getElementById('groups');
+        for (let i = 1; i <= 15; i++) {
+            groupsContainer.innerHTML += createGroup(i);
+        }
+
+        function updateStudentCount(groupNumber) {
+            const input = document.getElementById(`studentNames-${groupNumber}`).value;
+            const names = input.split('\n').map(name => name.trim()).filter(name => name);
+            document.getElementById(`studentCount-${groupNumber}`).innerText = `共輸入學生數: ${names.length}`;
+        }
+
+        function handleCSVUpload() {
+            const fileInput = document.getElementById('csvUpload');
+            const file = fileInput.files[0];
+            if (!file) {
+                alert("請選擇 CSV 檔案！");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                const csvData = event.target.result;
+                const rows = csvData.split('\n').map(row => row.split(','));
+
+                for (let i = 0; i < 15; i++) {
+                    const item = rows[0][i * 2] || "";
+                    const students = rows.map(row => row[i * 2 + 1] || "").filter(name => name);
+
+                    document.getElementById(`item-${i + 1}`).value = item;
+                    document.getElementById(`studentNames-${i + 1}`).value = students.join('\n');
+                    updateStudentCount(i + 1);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function shuffleNames(groupNumber) {
+            const input = document.getElementById(`studentNames-${groupNumber}`).value;
+            const item = document.getElementById(`item-${groupNumber}`).value.trim();
+            const names = input.split('\n').map(name => name.trim()).filter(name => name);
+
+            if (names.length === 0) {
+                document.getElementById(`result-${groupNumber}`).innerHTML = "請輸入學生姓名！";
+                return;
+            }
+
+            for (let i = names.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [names[i], names[j]] = [names[j], names[i]];
+            }
+            displayResult(groupNumber, item, names);
+        }
+
+        function displayResult(groupNumber, item, names) {
+            const resultDiv = document.getElementById(`result-${groupNumber}`);
+            resultDiv.innerHTML = `<strong>${item}</strong><br><br>`;
+            names.forEach((name, index) => {
+                resultDiv.innerHTML += `${index + 1}. ${name}<br>`;
+            });
+            resultDiv.scrollTop = resultDiv.scrollHeight;
+        }
+
+        function shuffleAllGroups() {
+            for (let i = 1; i <= 15; i++) {
+                shuffleNames(i);
+            }
+            alert("所有分組抽籤已完成！");
+        }
+
+        function downloadAllResults() {
+            let allResults = "";
+            for (let i = 1; i <= 15; i++) {
+                const item = document.getElementById(`item-${i}`).value.trim();
+                const result = document.getElementById(`result-${i}`).innerText;
+                if (result) {
+                    allResults += `第 ${i} 組 - ${item}\n${result}\n\n`;
+                }
+            }
+            if (!allResults) {
+                alert("請先完成排序再下載結果！");
+                return;
+            }
+            const blob = new Blob([allResults], { type: 'text/plain' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = '所有抽籤結果.txt';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
