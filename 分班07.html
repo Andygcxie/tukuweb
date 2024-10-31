@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>土庫國小新生編班程式</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            margin: 20px;
+        }
+        .section {
+            margin-bottom: 20px;
+            padding: 10px;
+        }
+        .section-border {
+            border-bottom: 10px solid #CE0000;
+        }
+        .student-list {
+            width: 200px;
+            border: 6px solid;
+            padding: 10px;
+            margin-right: 10px;
+            display: inline-block;
+            vertical-align: top;
+        }
+	.group {
+            width: 130px;
+            border: 5px solid;
+            padding: 10px;
+            margin-right: 10px;
+            display: inline-block;
+            vertical-align: top;
+        }
+        .student-list {
+            max-height: 400px;
+            overflow-y: scroll;
+        }
+        button, select {
+            margin: 10px 60px 0 10px;
+        }
+        .stats {
+            font-weight: bold;
+        }
+        .group-1 { border-color: red; }
+        .group-2 { border-color: green; }
+        .group-3 { border-color: blue; }
+        .group-4 { border-color: orange; }
+        .group-5 { border-color: purple; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 功能區 -->
+        <div class="section section-border">
+            <h1 style="font-size: 50px;">土庫國小新生編班程式</h1>
+            <input type="file" id="csvFileInput" accept=".csv">
+            <select id="numGroups">
+                <option value="0">選擇班級數</option>
+                <option value="1">1班</option>
+                <option value="2">2班</option>
+                <option value="3">3班</option>
+                <option value="4">4班</option>
+                <option value="5">5班</option>
+                <option value="6">6班</option>
+                <option value="7">7班</option>
+                <option value="8">8班</option>
+                <option value="9">9班</option>
+                <option value="10">10班</option>
+            </select>
+            <button id="startGrouping">開始編班</button>
+            <button id="exportGroups">輸出名單</button>
+        </div>
+
+        <!-- 新生名單區 -->
+        <div class="section section-border">
+            <h1>新生名單</h1>
+            <div id="studentList" class="student-list">
+                <!-- 這裡會顯示新生名單 -->
+            </div>
+            <div id="studentStats" class="stats">
+                <!-- 這裡會顯示男、女、總人數統計 -->
+            </div>
+        </div>
+
+        <!-- 分組結果區 -->
+        <div class="section">
+            <div id="groupsContainer">
+                <!-- 這裡會顯示分組結果 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let students = [];
+        let groups = [];
+
+        // 匯入CSV檔案
+        document.getElementById('csvFileInput').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const csv = e.target.result;
+                const rows = csv.split('\n').slice(1);
+                students = rows.filter(row => row.trim() !== "").map((row, index) => {
+                    const [gender, name, dob, score] = row.split(',');
+                    return { index: index + 1, gender: gender.trim(), name: name.trim(), dob: dob.trim(), score: parseFloat(score) };
+                });
+                displayStudentList();
+            };
+            reader.readAsText(file);
+        });
+
+        // 顯示學生名單並統計男女比例
+        function displayStudentList() {
+            const studentListDiv = document.getElementById('studentList');
+            studentListDiv.innerHTML = '';
+            students.forEach(student => {
+                studentListDiv.innerHTML += `<p>${student.index}. ${student.gender} ${student.name}</p>`;
+            });
+            displayStudentStats();
+        }
+
+        // 統計新生男女比例
+        function displayStudentStats() {
+            const boysCount = students.filter(s => s.gender === '男').length;
+            const girlsCount = students.filter(s => s.gender === '女').length;
+            const totalCount = students.length;
+            const studentStatsDiv = document.getElementById('studentStats');
+            studentStatsDiv.innerHTML = `男 ${boysCount} 人，女 ${girlsCount} 人，共 ${totalCount} 人`;
+        }
+
+        // 開始編班
+        document.getElementById('startGrouping').addEventListener('click', function() {
+            const numGroups = parseInt(document.getElementById('numGroups').value);
+            if (numGroups > 0) {
+                groups = Array.from({ length: numGroups }, () => []);
+                let boys = students.filter(s => s.gender === '男');
+                let girls = students.filter(s => s.gender === '女');
+                
+                boys = shuffleArray(boys);
+                girls = shuffleArray(girls);
+
+                // 計算每組男生和女生的數量
+                const boysPerGroup = Math.floor(boys.length / numGroups);
+                const girlsPerGroup = Math.floor(girls.length / numGroups);
+                const extraBoys = boys.length % numGroups;
+                const extraGirls = girls.length % numGroups;
+
+                // 分配男生（從第一組到最後一組循環）
+                for (let i = 0; i < boys.length; i++) {
+                    const groupIndex = i % numGroups;
+                    groups[groupIndex].push(boys[i]);
+                }
+
+                // 分配女生（從最後一組到第一組循環）
+                for (let i = 0; i < girls.length; i++) {
+                    const groupIndex = (numGroups - 1) - (i % numGroups);
+                    groups[groupIndex].push(girls[i]);
+                }
+
+                displayGroups();
+            } else {
+                alert('請選擇班級數');
+            }
+        });
+
+        // 隨機打亂陣列順序
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // 顯示分組結果並統計各組男女比例
+        function displayGroups() {
+            const groupsContainer = document.getElementById('groupsContainer');
+            groupsContainer.innerHTML = '';
+            let groupIndex = 0;
+
+            function displayGroupMember(group, groupNumber, delay) {
+                const groupDiv = document.createElement('div');
+                groupDiv.className = `group group-${groupNumber}`;
+                groupDiv.innerHTML = `<h3>第${groupNumber}組</h3>`;
+                groupsContainer.appendChild(groupDiv);
+                let memberIndex = 0;
+                
+                const interval = setInterval(() => {
+                    if (memberIndex < group.length) {
+                        const student = group[memberIndex];
+                        groupDiv.innerHTML += `<p>${memberIndex + 1}. ${student.gender} ${student.name}</p>`;
+                        memberIndex++;
+                    } else {
+                        clearInterval(interval);
+                        const boysCount = group.filter(s => s.gender === '男').length;
+                        const girlsCount = group.filter(s => s.gender === '女').length;
+                        const totalCount = group.length;
+                        groupDiv.innerHTML += `<p class="stats">男 ${boysCount} 人，女 ${girlsCount} 人，共 ${totalCount} 人</p>`;
+                        groupIndex++;
+                        if (groupIndex < groups.length) {
+                            setTimeout(() => displayGroupMember(groups[groupIndex], groupIndex + 1, 50), 100);
+                        }
+                    }
+                }, delay);
+            }
+            
+            // 開始逐一顯示每一組
+            displayGroupMember(groups[groupIndex], groupIndex + 1, 50); // 0.01秒延遲
+        }
+
+        // 匯出分組名單
+        document.getElementById('exportGroups').addEventListener('click', function() {
+            let textContent = "";
+            groups.forEach((group, index) => {
+                textContent += `第${index + 1}組\n`;
+                group.forEach((student, studentIndex) => {
+                    textContent += `${studentIndex + 1}. ${student.gender} ${student.name}\n`;
+                });
+                textContent += `男 ${group.filter(s => s.gender === '男').length} 人，女 ${group.filter(s => s.gender === '女').length} 人，共 ${group.length} 人\n\n`;
+            });
+
+            const blob = new Blob([textContent], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = '分組名單.txt';
+            a.click();
+        });
+    </script>
+</body>
+</html>
