@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>算術大挑戰</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin-top: 50px;
+        }
+        h1 {
+            font-size: 3em;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin: 0 50px;
+        }
+        .left-panel {
+            width: 60%;
+        }
+        .right-panel {
+            width: 35%;
+            text-align: right;
+        }
+        .question {
+            font-size: 1.5em;
+            margin: 10px 0;
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+        }
+        .question-number {
+            width: 40px;
+            text-align: right;
+            margin-right: 10px;
+        }
+        input {
+            font-size: 1.5em;
+            width: 100px;
+            text-align: center;
+            margin-left: 10px;
+        }
+        .btn {
+            padding: 10px 20px;
+            font-size: 1.2em;
+            margin-top: 20px;
+        }
+        .correct {
+            color: green;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .incorrect {
+            color: red;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .score {
+            font-size: 2em;
+            color: blue;
+            margin-top: 20px;
+        }
+        .history {
+            font-size: 1.2em;
+        }
+        #resetScores {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>算術大挑戰</h1>
+
+    <div class="container">
+        <div class="left-panel">
+            <button id="generateQuestions" class="btn">出題</button>
+
+            <div id="questionsContainer"></div>
+
+            <button id="checkAnswers" class="btn" style="display: none;">公布答案</button>
+
+            <div id="scoreContainer" class="score"></div>
+
+            <div id="timeTaken" class="score"></div>
+        </div>
+
+        <div class="right-panel">
+            <div id="scoreHistory" class="history"></div>
+            <button id="resetScores" class="btn">重新統計成績</button>
+        </div>
+    </div>
+
+    <!-- 背景音樂 -->
+    <audio id="backgroundMusic">
+        <source src="music.mp3" type="audio/mpeg">
+        您的瀏覽器不支援音樂播放。
+    </audio>
+
+    <script>
+        const questionsContainer = document.getElementById('questionsContainer');
+        const checkAnswersBtn = document.getElementById('checkAnswers');
+        const generateQuestionsBtn = document.getElementById('generateQuestions');
+        const scoreContainer = document.getElementById('scoreContainer');
+        const timeTakenDisplay = document.getElementById('timeTaken');
+        const backgroundMusic = document.getElementById('backgroundMusic');
+        const scoreHistoryContainer = document.getElementById('scoreHistory');
+        const resetScoresBtn = document.getElementById('resetScores');
+        let questions = [];
+        let score = 0;
+        let startTime;
+        let scoreHistory = JSON.parse(localStorage.getItem('scoreHistory')) || [];
+
+        function generateRandomQuestion() {
+            const num1 = Math.floor(Math.random() * 9) + 1;
+            const num2 = Math.floor(Math.random() * 9) + 1;
+            const correctAnswer = num1 * num2;
+            return { questionText: `${num1} * ${num2} = `, correctAnswer: correctAnswer };
+        }
+
+        function generateQuestions() {
+            // 開始播放音樂
+            backgroundMusic.play();
+            
+            // 記錄開始時間
+            startTime = new Date();
+
+            questions = [];
+            score = 0;
+            scoreContainer.innerHTML = ''; // 清空分數
+            timeTakenDisplay.innerHTML = ''; // 清空時間顯示
+            questionsContainer.innerHTML = '';  // 清空之前的問題
+
+            for (let i = 0; i < 10; i++) {  // 產生10題
+                const question = generateRandomQuestion();
+                questions.push(question);
+
+                const questionDiv = document.createElement('div');
+                questionDiv.classList.add('question');
+
+                const questionNumberDiv = document.createElement('div');
+                questionNumberDiv.classList.add('question-number');
+                questionNumberDiv.textContent = `(${i + 1})`;  // 題號
+
+                questionDiv.appendChild(questionNumberDiv);
+                questionDiv.innerHTML += `${question.questionText}<input type="number" id="answer${i}" />`;
+                questionsContainer.appendChild(questionDiv);
+            }
+            checkAnswersBtn.style.display = 'block';
+        }
+
+        function checkAnswers() {
+            const endTime = new Date();
+            const timeTaken = ((endTime - startTime) / 1000).toFixed(2); // 計算作答時間，單位秒
+            timeTakenDisplay.textContent = `作答時間：${timeTaken} 秒`;
+
+            let correctCount = 0;
+            for (let i = 0; i < questions.length; i++) {
+                const userAnswer = document.getElementById(`answer${i}`).value;
+                const resultSpan = document.createElement('span');
+
+                if (userAnswer == questions[i].correctAnswer) {
+                    resultSpan.textContent = " ○ 答對了";
+                    resultSpan.classList.add('correct');
+                    correctCount++;
+                } else {
+                    resultSpan.textContent = ` × (正確答案: ${questions[i].correctAnswer})`;
+                    resultSpan.classList.add('incorrect');
+                }
+                document.getElementById(`answer${i}`).parentNode.appendChild(resultSpan);
+            }
+            
+            // 更新分數和時間記錄
+            scoreContainer.textContent = `你答對了 ${correctCount} 題，共 10 題！`;
+            updateScoreHistory(correctCount, timeTaken);
+
+            checkAnswersBtn.style.display = 'none';
+        }
+
+        function updateScoreHistory(correctCount, timeTaken) {
+            // 添加新的成績到歷史
+            scoreHistory.push({ correct: correctCount, time: timeTaken });
+
+            // 僅保留最近的10次成績
+            if (scoreHistory.length > 10) {
+                scoreHistory.shift();
+            }
+
+            // 儲存到 localStorage
+            localStorage.setItem('scoreHistory', JSON.stringify(scoreHistory));
+
+            // 更新顯示歷史成績
+            displayScoreHistory();
+        }
+
+        function displayScoreHistory() {
+            scoreHistoryContainer.innerHTML = '<h3>最近10次作答成績：</h3>';
+            scoreHistory.forEach((entry, index) => {
+                const scoreEntry = document.createElement('div');
+                scoreEntry.textContent = `第${index + 1}次: 答對${entry.correct}題, 時間: ${entry.time}秒`;
+                scoreHistoryContainer.appendChild(scoreEntry);
+            });
+        }
+
+        function resetScoreHistory() {
+            scoreHistory = [];
+            localStorage.removeItem('scoreHistory');
+            scoreHistoryContainer.innerHTML = '<h3>最近10次作答成績已重置。</h3>';
+        }
+
+        generateQuestionsBtn.addEventListener('click', generateQuestions);
+        checkAnswersBtn.addEventListener('click', checkAnswers);
+        resetScoresBtn.addEventListener('click', resetScoreHistory);
+
+        // 頁面載入時顯示歷史成績
+        displayScoreHistory();
+    </script>
+
+</body>
+</html>
